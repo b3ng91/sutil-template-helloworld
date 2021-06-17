@@ -1,6 +1,7 @@
 {
   "private": true,
   "scripts": {
+    "init": "dotnet tool restore && yarn",
     "start": "dotnet fable watch src/App --run webpack serve",
     "build": "dotnet fable       src/App --run webpack --mode production"
   },
