@@ -36,27 +36,30 @@ let gridItemView item =
 
 type Model = {
     CurrentPlayer: Player
-    Grid: GridItem array
+    Grid: (int * GridItem) list
 }
 
 module Model =
     let init () = {
         CurrentPlayer = Player.O
-        Grid = Array.init 9 (fun _ -> GridItem.Empty)
+        Grid = List.init 9 (fun i -> (i, GridItem.Empty))
     }
         
     let updateGrid index (model: Model) =
         let newItem = Player.toGridItem model.CurrentPlayer
-        let updateGridArray i current =
+        let updateGridArray (i, current) =
             if i = index then
-                newItem
-            else current
+                i, newItem
+            else
+                i, current
         
         let nextPlayer = Player.other model.CurrentPlayer
-        let newGrid = Array.mapi updateGridArray model.Grid
-        { model with Grid = newGrid; CurrentPlayer = nextPlayer }
+        let newGrid = List.map updateGridArray model.Grid
+        let newModel = { model with Grid = newGrid; CurrentPlayer = nextPlayer }
+        printfn "%A" newModel
+        newModel
 
-let gridView (onClickHandler: int -> unit) index gridItem =
+let gridView (onClickHandler: int -> unit) (index, gridItem) =
     Html.div [
         style [
             Css.border (length.px 1, borderStyle.solid, color.aqua)
@@ -64,11 +67,14 @@ let gridView (onClickHandler: int -> unit) index gridItem =
             Css.custom ("aspect-ratio", "1 / 1")
         ]
         onClick (fun _ -> onClickHandler index) [Once] 
-        text (gridItemView gridItem)
+        text ((gridItemView gridItem) + string index)
     ]
 
 let view () =
     let store = Store.make (Model.init ())
+    
+    let onTurn index =
+        Store.modify (Model.updateGrid index) store
     
     Html.div [
         style [
@@ -76,10 +82,8 @@ let view () =
             Css.gridTemplateColumns [length.fr 1; length.fr 1; length.fr 1]
             Css.gridTemplateRows [length.fr 1; length.fr 1; length.fr 1]
         ]
-        let model = Store.get store
-        yield!
-            model.Grid
-            |> Array.mapi (gridView (fun i -> Store.modify (Model.updateGrid i) store))
+        let grid = Store.map (fun m -> m.Grid) store
+        eachk grid (gridView onTurn) fst []
     ]
     
 
